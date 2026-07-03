@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetWatch - Monitoring Jaringan LAN</title>
+    <style>
+        /* ===== RESET & BASE ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        /* ===== HEADER ===== */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f3460;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .logo {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 0 20px rgba(0, 210, 255, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header-subtitle {
+            font-size: 12px;
+            color: #888;
+            -webkit-text-fill-color: #888;
+        }
+        
+        .header-right {
+            text-align: right;
+        }
+        
+        .last-update {
+            font-size: 13px;
+            color: #aaa;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .status-badge.online {
+            background: rgba(0, 200, 83, 0.2);
+            color: #00c853;
+            border: 1px solid rgba(0, 200, 83, 0.3);
+        }
+        
+        .status-badge.offline {
+            background: rgba(255, 82, 82, 0.2);
+            color: #ff5252;
+            border: 1px solid rgba(255, 82, 82, 0.3);
+        }
+        
+        /* ===== CONTAINER ===== */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        /* ===== STATS CARDS ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #1e2d4a;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        
+        .stat-card .label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .stat-card .value.green { color: #00c853; }
+        .stat-card .value.yellow { color: #ffd600; }
+        .stat-card .value.red { color: #ff5252; }
+        .stat-card .value.blue { color: #448aff; }
+        .stat-card .value.cyan { color: #00e5ff; }
+        
+        .stat-card .sub {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        /* ===== SECTION ===== */
+        .section {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            border-radius: 12px;
+            border: 1px solid #1e2d4a;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+        
+        .section-header {
+            padding: 15px 20px;
+            border-bottom: 1px solid #1e2d4a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .section-header:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        
+        .section-header h2 {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-header h2 .icon {
+            font-size: 20px;
+        }
+        
+        .section-header .toggle-btn {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 18px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .section-header .toggle-btn.collapsed {
+            transform: rotate(-90deg);
+        }
+        
+        .section-body {
+            padding: 20px;
+            transition: max-height 0.3s ease;
+        }
+        
+        .section-body.hidden {
+            display: none;
+        }
+        
+        /* ===== TABLE ===== */
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead th {
+            background: rgba(15, 52, 96, 0.5);
+            padding: 12px 15px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #888;
+            font-weight: 600;
+            border-bottom: 2px solid #1e2d4a;
+        }
+        
+        tbody td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #1a1a2e;
+            font-size: 14px;
+        }
+        
+        tbody tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+        
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-dot.active { background: #00c853; box-shadow: 0 0 8px rgba(0,200,83,0.5); }
+        .status-dot.inactive { background: #666; }
+        .status-dot.error { background: #ff5252; box-shadow: 0 0 8px rgba(255,82,82,0.5); }
+        
+        .latency-bar {
+            display: inline-block;
+            height: 6px;
+            border-radius: 3px;
+            min-width: 30px;
+            max-width: 100px;
+            background: #1e2d4a;
+            position: relative;
+            vertical-align: middle;
+        }
+        
+        .latency-bar .fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s;
+        }
+        
+        .latency-bar .fill.good { background: linear-gradient(90deg, #00c853, #00e676); }
+        .latency-bar .fill.fair { background: linear-gradient(90deg, #ffd600, #ffab00); }
+        .latency-bar .fill.poor { background: linear-gradient(90deg, #ff5252, #ff1744); }
+        
+        .latency-text {
+            margin-left: 8px;
+            font-size: 12px;
+        }
+        
+        /* ===== INTERNET STATUS ===== */
+        .internet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .internet-card {
+            background: rgba(15, 52, 96, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #1e2d4a;
+        }
+        
+        .internet-card .service-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .internet-card .service-host {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        
+        .internet-card .service-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        /* ===== DNS TABLE ===== */
+        .dns-success { color: #00c853; }
+        .dns-failed { color: #ff5252; }
+        
+        /* ===== LOGS ===== */
+        .log-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .log-entry {
+            padding: 8px 12px;
+            border-bottom: 1px solid #1a1a2e;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .log-entry:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        
+        .log-time {
+            color: #666;
+            min-width: 140px;
+        }
+        
+        .log-level {
+            min-width: 70px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .log-level.INFO { color: #448aff; }
+        .log-level.OK { color: #00c853; }
+        .log-level.WARNING { color: #ffd600; }
+        .log-level.ERROR { color: #ff5252; }
+        
+        .log-message {
+            color: #ccc;
+        }
+        
+        /* ===== TRACEROUTE ===== */
+        .trace-container {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+        }
+        
+        .trace-hop {
+            padding: 6px 10px;
+            border-bottom: 1px solid #1a1a2e;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .trace-hop .hop-num {
+            color: #888;
+            min-width: 30px;
+        }
+        
+        .trace-hop .hop-ip {
+            color: #00e5ff;
+        }
+        
+        .trace-hop .hop-latency {
+            color: #aaa;
+        }
+        
+        .trace-hop.timeout .hop-ip {
+            color: #ff5252;
+        }
+        
+        /* ===== PORTS ===== */
+        .port-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin: 2px;
+            background: rgba(0, 200, 83, 0.15);
+            color: #00c853;
+            border: 1px solid rgba(0, 200, 83, 0.2);
+        }
+        
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a2e;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #0f3460;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #1a4a8a;
+        }
+        
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .header-right {
+                text-align: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .internet-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* ===== ANIMATIONS ===== */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        /* ===== REFRESH BUTTON ===== */
+        .refresh-btn {
+            background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .refresh-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.3);
+        }
+        
+        .refresh-btn:active {
+            transform: translateY(0);
+        }
+        
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        /* ===== TOOLTIP ===== */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+        
+        .tooltip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">NW</div>
+            <div>
+                <h1>NetWatch</h1>
+                <div class="header-subtitle">Network Monitoring Tool</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="last-update">Terakhir diperbarui: <span id="updateTime">2026-07-03 10:56:47</span></div>
+            <span class="status-badge online">
+                &#9679; Terkoneksi
+            </span>
+            <button class="refresh-btn" onclick="location.reload()" style="margin-left: 15px;">&#8635; Refresh</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- STATS -->
+        <div class="stats-grid">
+            <div class="stat-card fade-in">
+                <div class="label">Perangkat Aktif</div>
+                <div class="value cyan">1</div>
+                <div class="sub">dari 254 IP dipindai</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="label">Koneksi Internet</div>
+                <div class="value green">Terkoneksi</div>
+                <div class="sub">Latency: 36.0ms</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="label">Gateway</div>
+                <div class="value blue" style="font-size: 20px;">10.20.132.7</div>
+                <div class="sub">&#9679; Terjangkau</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="label">IP Lokal</div>
+                <div class="value blue" style="font-size: 20px;">192.168.10.1</div>
+                <div class="sub">Subnet: 255.255.255.0</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="label">Total Log</div>
+                <div class="value yellow">10</div>
+                <div class="sub">aktivitas tercatat</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="label">Hostname</div>
+                <div class="value blue" style="font-size: 18px;">LAPTOP-B219MNAA</div>
+                <div class="sub">Nama perangkat Anda</div>
+            </div>
+        </div>
+        
+        <!-- PERANGKAT AKTIF -->
+        <div class="section fade-in">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="icon">&#128268;</span> Perangkat Aktif di Jaringan</h2>
+                <span class="toggle-btn">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>IP Address</th>
+                                <th>Hostname</th>
+                                <th>MAC Address</th>
+                                <th>Status</th>
+                                <th>Latency</th>
+                                <th>Port Terbuka</th>
+                                <th>Terakhir Terlihat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+            <td>1</td>
+            <td style="font-family:monospace">192.168.10.1</td>
+            <td>LAPTOP-B219MNAA</td>
+            <td style="font-family:monospace;font-size:12px">Tidak diketahui</td>
+            <td><span class="status-dot active"></span>Aktif</td>
+            <td><div class="latency-bar"><div class="fill good" style="width:0.0%"></div></div><span class="latency-text">0.0 ms</span></td>
+            <td><span class="port-badge">HTTP-Alt:8080</span><span class="port-badge">SMB:445</span></td>
+            <td style="font-size:12px;color:#888">2026-07-03 10:55:54</td>
+        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- KONEKSI INTERNET -->
+        <div class="section fade-in">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="icon">&#127760;</span> Status Koneksi Internet</h2>
+                <span class="toggle-btn">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <div class="internet-grid">
+                    <div class="internet-card">
+            <div class="service-name">Google DNS</div>
+            <div class="service-host">8.8.8.8</div>
+            <div class="service-status">
+                <span class="status-dot active"></span>
+                <span>Online</span>
+                <span style="color:#888;font-size:12px">| 36.0 ms | 0% packet loss</span>
+            </div>
+        </div><div class="internet-card">
+            <div class="service-name">Cloudflare DNS</div>
+            <div class="service-host">1.1.1.1</div>
+            <div class="service-status">
+                <span class="status-dot active"></span>
+                <span>Online</span>
+                <span style="color:#888;font-size:12px">| 241.0 ms | 0% packet loss</span>
+            </div>
+        </div><div class="internet-card">
+            <div class="service-name">Google.com</div>
+            <div class="service-host">google.com</div>
+            <div class="service-status">
+                <span class="status-dot active"></span>
+                <span>Online</span>
+                <span style="color:#888;font-size:12px">| 436.0 ms | 0% packet loss</span>
+            </div>
+        </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DNS RESOLUTION -->
+        <div class="section fade-in">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="icon">&#128220;</span> Resolusi DNS</h2>
+                <span class="toggle-btn">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Domain</th>
+                                <th>IP Address</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+            <td>google.com</td>
+            <td style="font-family:monospace">142.251.10.113</td>
+            <td class="dns-success">&#10003; Berhasil</td>
+        </tr><tr>
+            <td>youtube.com</td>
+            <td style="font-family:monospace">172.253.118.93</td>
+            <td class="dns-success">&#10003; Berhasil</td>
+        </tr><tr>
+            <td>facebook.com</td>
+            <td style="font-family:monospace">57.144.100.1</td>
+            <td class="dns-success">&#10003; Berhasil</td>
+        </tr><tr>
+            <td>github.com</td>
+            <td style="font-family:monospace">20.205.243.166</td>
+            <td class="dns-success">&#10003; Berhasil</td>
+        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TRACEROUTE -->
+        <div class="section fade-in">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="icon">&#128640;</span> Traceroute (8.8.8.8)</h2>
+                <span class="toggle-btn">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <div class="trace-container">
+                    <div class="empty-state">Tidak ada data traceroute</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- LOG AKTIVITAS -->
+        <div class="section fade-in">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="icon">&#128196;</span> Log Aktivitas</h2>
+                <span class="toggle-btn">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <div class="log-container">
+                    <div class="log-entry">
+            <span class="log-time">2026-07-03 10:56:47</span>
+            <span class="log-level INFO">INFO</span>
+            <span class="log-message">Traceroute selesai (0 hop)</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:56:17</span>
+            <span class="log-level OK">OK</span>
+            <span class="log-message">Resolusi DNS berfungsi</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:56:17</span>
+            <span class="log-level OK">OK</span>
+            <span class="log-message">Koneksi internet aktif</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:56:01</span>
+            <span class="log-level OK">OK</span>
+            <span class="log-message">Ditemukan 1 perangkat aktif</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:55:49</span>
+            <span class="log-level OK">OK</span>
+            <span class="log-message">Gateway 10.20.132.7 terjangkau (3.0ms)</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:55:48</span>
+            <span class="log-level INFO">INFO</span>
+            <span class="log-message">IP Lokal: 192.168.10.1, Gateway: 10.20.132.7</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:55:48</span>
+            <span class="log-level INFO">INFO</span>
+            <span class="log-message">NetWatch dimulai</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:49:19</span>
+            <span class="log-level OK">OK</span>
+            <span class="log-message">Gateway 10.20.132.7 terjangkau (3.0ms)</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:49:18</span>
+            <span class="log-level INFO">INFO</span>
+            <span class="log-message">IP Lokal: 192.168.10.1, Gateway: 10.20.132.7</span>
+        </div><div class="log-entry">
+            <span class="log-time">2026-07-03 10:49:17</span>
+            <span class="log-level INFO">INFO</span>
+            <span class="log-message">NetWatch dimulai</span>
+        </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- INFORMASI SISTEM -->
+        <div class="section fade-in">
+            <div class="section-header" onclick="toggleSection(this)">
+                <h2><span class="icon">&#128295;</span> Informasi Sistem</h2>
+                <span class="toggle-btn">&#9660;</span>
+            </div>
+            <div class="section-body">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parameter</th>
+                                <th>Nilai</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Sistem Operasi</td><td>Windows 11</td></tr>
+                            <tr><td>Hostname</td><td>LAPTOP-B219MNAA</td></tr>
+                            <tr><td>Python Version</td><td>3.13.14</td></tr>
+                            <tr><td>Waktu Monitoring</td><td>2026-07-03 10:56:47</td></tr>
+                            <tr><td>Durasi Scanning</td><td>59.2 detik</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Toggle section collapse
+        function toggleSection(header) {
+            const body = header.nextElementSibling;
+            const btn = header.querySelector('.toggle-btn');
+            body.classList.toggle('hidden');
+            btn.classList.toggle('collapsed');
+        }
+        
+        // Auto refresh setiap 60 detik
+        setTimeout(function() {
+            location.reload();
+        }, 60000);
+        
+        // Update waktu
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleString('id-ID');
+            document.getElementById('updateTime').textContent = timeStr;
+        }
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+</html>
